@@ -1,0 +1,24 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+
+# Excel temporary lock files
+~$*.xlsx
+~$*.xlsm
+~$*.xls
+
+# Workbook validation scratch files
+.xlsx_check/
+.xlsx_check.zip
+# Excel creation ps1
+*.ps1
+*.xlsx
