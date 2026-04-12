@@ -151,6 +151,30 @@
       white-space: nowrap;
     }
 
+    .vehicle-picker {
+      display: grid;
+      gap: 6px;
+      max-width: 280px;
+      margin-top: 14px;
+    }
+
+    .vehicle-picker label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--white);
+      color: var(--ink);
+      font: inherit;
+      font-weight: 700;
+      padding: 9px 10px;
+    }
+
     input[type="range"] {
       width: 100%;
       accent-color: var(--accent);
@@ -286,8 +310,15 @@
   <main>
     <div class="topbar">
       <div>
-        <h1>Adeka Taigo Fleet Dashboard</h1>
+        <h1 id="dashboardTitle">Adeka Taigo Fleet Dashboard</h1>
         <p>Move the assumptions and use the after-tax decision point as the quote threshold for lease-to-own. Rental fee is entered excluding VAT.</p>
+        <div class="vehicle-picker">
+          <label for="vehicleSelect">Car</label>
+          <select id="vehicleSelect" aria-label="Car model">
+            <option value="taigo">Taigo</option>
+            <option value="custom">Custom car</option>
+          </select>
+        </div>
       </div>
       <div class="decision" id="decisionBox">
         <strong id="decisionTitle">Calculating</strong>
@@ -406,12 +437,30 @@
   </main>
 
   <script>
+    const carOptions = {
+      taigo: {
+        name: "Taigo",
+        title: "Adeka Taigo Fleet Dashboard",
+        values: {
+          rentalMonthly: 46500,
+          rentalDeductibleCap: 46000,
+          listPrice: 2364000,
+          fleetDiscount: 0.18
+        }
+      },
+      custom: {
+        name: "Custom car",
+        title: "Adeka Fleet Dashboard",
+        values: {}
+      }
+    };
+
     const specs = [
       { key: "fleetSize", label: "Fleet size", value: 300, min: 50, max: 500, step: 10, format: n => `${n.toFixed(0)} cars` },
       { key: "term", label: "Term", value: 47, min: 24, max: 60, step: 1, format: n => `${n.toFixed(0)} months` },
       { key: "rentalMonthly", label: "Rental fee excluding VAT", value: 46500, min: 25000, max: 90000, step: 500, format: money },
       { key: "rentalDeductibleCap", label: "Rental deductible cap excluding VAT", value: 46000, min: 0, max: 80000, step: 1000, format: money },
-      { key: "listPrice", label: "Taigo list price", value: 2364000, min: 1500000, max: 4000000, step: 10000, format: money },
+      { key: "listPrice", label: "List price", value: 2364000, min: 1500000, max: 4000000, step: 10000, format: money },
       { key: "fleetDiscount", label: "Fleet discount", value: 0.18, min: 0, max: 0.35, step: 0.01, format: pct },
       { key: "financeRate", label: "Monthly finance rate", value: 0.0319, min: 0.015, max: 0.06, step: 0.001, format: pct },
       { key: "resaleInflation", label: "Annual inflation for resale", value: 0.25, min: 0, max: 0.6, step: 0.01, format: pct },
@@ -434,6 +483,7 @@
 
     const state = Object.fromEntries(specs.map(spec => [spec.key, spec.value]));
     const controls = document.getElementById("controls");
+    const vehicleSelect = document.getElementById("vehicleSelect");
 
     specs.forEach(spec => {
       const wrap = document.createElement("div");
@@ -448,6 +498,15 @@
         state[spec.key] = Number(event.target.value);
         render();
       });
+    });
+
+    vehicleSelect.addEventListener("change", event => {
+      const selectedCar = carOptions[event.target.value];
+      Object.entries(selectedCar.values).forEach(([key, value]) => {
+        state[key] = value;
+        document.getElementById(key).value = value;
+      });
+      render();
     });
 
     function money(value) {
@@ -634,6 +693,10 @@
     });
 
     function render() {
+      const selectedCar = carOptions[vehicleSelect.value];
+      document.title = selectedCar.title;
+      setText("dashboardTitle", selectedCar.title);
+
       specs.forEach(spec => {
         document.getElementById(`${spec.key}Value`).textContent = spec.format(state[spec.key]);
       });
