@@ -164,7 +164,8 @@
       color: var(--muted);
     }
 
-    select {
+    select,
+    input[type="text"] {
       width: 100%;
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -173,6 +174,21 @@
       font: inherit;
       font-weight: 700;
       padding: 9px 10px;
+    }
+
+    .vehicle-picker button {
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      background: var(--accent);
+      color: var(--white);
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+      padding: 9px 12px;
+    }
+
+    .vehicle-picker .note {
+      margin-top: 0;
     }
 
     input[type="range"] {
@@ -313,11 +329,14 @@
         <h1 id="dashboardTitle">Adeka Taigo Fleet Dashboard</h1>
         <p>Move the assumptions and use the after-tax decision point as the quote threshold for lease-to-own. Rental fee is entered excluding VAT.</p>
         <div class="vehicle-picker">
-          <label for="vehicleSelect">Car</label>
-          <select id="vehicleSelect" aria-label="Car model">
+          <label for="vehicleSelect">Saved car</label>
+          <select id="vehicleSelect" aria-label="Saved car">
             <option value="taigo">Taigo</option>
-            <option value="custom">Custom car</option>
           </select>
+          <label for="carNameInput">New car name</label>
+          <input id="carNameInput" type="text" placeholder="Enter a car name">
+          <button id="calculateCarButton" type="button">Calculate car data</button>
+          <p class="note" id="carMessage">Taigo uses the figures from this project. Add a name and adjust the sliders to create another car.</p>
         </div>
       </div>
       <div class="decision" id="decisionBox">
@@ -440,17 +459,6 @@
     const carOptions = {
       taigo: {
         name: "Taigo",
-        title: "Adeka Taigo Fleet Dashboard",
-        values: {
-          rentalMonthly: 46500,
-          rentalDeductibleCap: 46000,
-          listPrice: 2364000,
-          fleetDiscount: 0.18
-        }
-      },
-      custom: {
-        name: "Custom car",
-        title: "Adeka Fleet Dashboard",
         values: {}
       }
     };
@@ -484,6 +492,10 @@
     const state = Object.fromEntries(specs.map(spec => [spec.key, spec.value]));
     const controls = document.getElementById("controls");
     const vehicleSelect = document.getElementById("vehicleSelect");
+    const carNameInput = document.getElementById("carNameInput");
+    const calculateCarButton = document.getElementById("calculateCarButton");
+    const carMessage = document.getElementById("carMessage");
+    carOptions.taigo.values = snapshotState();
 
     specs.forEach(spec => {
       const wrap = document.createElement("div");
@@ -502,12 +514,67 @@
 
     vehicleSelect.addEventListener("change", event => {
       const selectedCar = carOptions[event.target.value];
-      Object.entries(selectedCar.values).forEach(([key, value]) => {
-        state[key] = value;
-        document.getElementById(key).value = value;
-      });
+      applyCarValues(selectedCar.values);
+      carNameInput.value = selectedCar.name === "Taigo" ? "" : selectedCar.name;
+      carMessage.textContent = `${selectedCar.name} data loaded. Adjust the sliders and click Calculate car data to update it.`;
       render();
     });
+
+    calculateCarButton.addEventListener("click", () => {
+      const typedName = carNameInput.value.trim();
+      const selectedKey = vehicleSelect.value;
+      const selectedCar = carOptions[selectedKey];
+      if (!typedName && selectedKey === "taigo") {
+        carMessage.textContent = "Enter a car name first, then adjust the sliders and calculate the new car data.";
+        carNameInput.focus();
+        return;
+      }
+      const carName = typedName || selectedCar.name;
+      const carKey = typedName ? uniqueCarKey(carName, selectedKey) : selectedKey;
+
+      carOptions[carKey] = {
+        name: carName,
+        values: snapshotState()
+      };
+      renderCarOptions(carKey);
+      carMessage.textContent = `${carName} data calculated and saved in the dropdown.`;
+      render();
+    });
+
+    function snapshotState() {
+      return Object.fromEntries(specs.map(spec => [spec.key, state[spec.key]]));
+    }
+
+    function applyCarValues(values) {
+      specs.forEach(spec => {
+        if (values[spec.key] === undefined) return;
+        state[spec.key] = values[spec.key];
+        document.getElementById(spec.key).value = values[spec.key];
+      });
+    }
+
+    function uniqueCarKey(name, currentKey) {
+      const base = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "car";
+      if (carOptions[currentKey] && carOptions[currentKey].name.toLowerCase() === name.toLowerCase()) return currentKey;
+      let key = base;
+      let count = 2;
+      while (carOptions[key]) {
+        key = `${base}-${count}`;
+        count += 1;
+      }
+      return key;
+    }
+
+    function renderCarOptions(selectedKey) {
+      vehicleSelect.replaceChildren();
+      Object.entries(carOptions).forEach(([key, car]) => {
+        const option = document.createElement("option");
+        option.value = key;
+        option.textContent = car.name;
+        vehicleSelect.appendChild(option);
+      });
+      vehicleSelect.value = selectedKey;
+    }
 
     function money(value) {
       return `${Math.round(value).toLocaleString("en-US")} TRY`;
@@ -694,8 +761,9 @@
 
     function render() {
       const selectedCar = carOptions[vehicleSelect.value];
-      document.title = selectedCar.title;
-      setText("dashboardTitle", selectedCar.title);
+      const pageTitle = `Adeka ${selectedCar.name} Fleet Dashboard`;
+      document.title = pageTitle;
+      setText("dashboardTitle", pageTitle);
 
       specs.forEach(spec => {
         document.getElementById(`${spec.key}Value`).textContent = spec.format(state[spec.key]);
