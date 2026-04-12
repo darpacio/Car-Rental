@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Adeka Taigo Fleet Dashboard</title>
+  <style>
+    :root {
+      --ink: #18212b;
+      --muted: #617080;
+      --line: #d9e1e7;
+      --panel: #f7fafc;
+      --input: #fff8dc;
+      --good: #1d7a46;
+      --bad: #b73535;
+      --accent: #0e6f8f;
+      --accent-2: #6b8e23;
+      --white: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background: var(--white);
+    }
+
+    main {
+      width: min(1280px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 40px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 30px;
+      line-height: 1.15;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 18px;
+      margin-bottom: 20px;
+    }
+
+    .decision {
+      min-width: 320px;
+      border: 1px solid var(--line);
+      border-left: 6px solid var(--accent);
+      border-radius: 8px;
+      padding: 14px 16px;
+      background: var(--panel);
+    }
+
+    .decision strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 20px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .section {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--white);
+      padding: 16px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 10px;
+    }
+
+    .tabbutton {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--white);
+      color: var(--ink);
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+      padding: 9px 12px;
+    }
+
+    .tabbutton.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--white);
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .controls {
+      display: grid;
+      gap: 14px;
+    }
+
+    .control {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--input);
+    }
+
+    .control label {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .control span {
+      font-weight: 700;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .kpi {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: var(--panel);
+      min-height: 112px;
+    }
+
+    .kpi .label {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+      min-height: 34px;
+    }
+
+    .kpi .value {
+      margin-top: 8px;
+      font-size: 24px;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+
+    .positive {
+      color: var(--good);
+    }
+
+    .negative {
+      color: var(--bad);
+    }
+
+    .barwrap {
+      display: grid;
+      gap: 12px;
+    }
+
+    .barrow {
+      display: grid;
+      gap: 6px;
+    }
+
+    .barlabel {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .bar {
+      height: 28px;
+      background: #eef3f6;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+    }
+
+    .fill {
+      height: 100%;
+      width: 0;
+      background: var(--accent);
+      transition: width 140ms ease;
+    }
+
+    .fill.alt {
+      background: var(--accent-2);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 9px 8px;
+      text-align: right;
+    }
+
+    th:first-child,
+    td:first-child {
+      text-align: left;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 700;
+      background: var(--panel);
+    }
+
+    .note {
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 900px) {
+      .topbar,
+      .grid {
+        display: block;
+      }
+
+      .decision {
+        margin-top: 16px;
+        min-width: 0;
+      }
+
+      .section {
+        margin-bottom: 18px;
+      }
+
+      .kpis {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="topbar">
+      <div>
+        <h1>Adeka Taigo Fleet Dashboard</h1>
+        <p>Move the assumptions and use the after-tax decision point as the quote threshold for lease-to-own. Rental fee is entered excluding VAT.</p>
+      </div>
+      <div class="decision" id="decisionBox">
+        <strong id="decisionTitle">Calculating</strong>
+        <p id="decisionText"></p>
+      </div>
+    </div>
+
+    <div class="grid">
+      <section class="section">
+        <h2>Critical Inputs</h2>
+        <div class="controls" id="controls"></div>
+      </section>
+
+      <section class="section">
+        <div class="tabs" aria-label="Dashboard tabs">
+          <button class="tabbutton active" type="button" data-tab="overviewPanel">Decision Overview</button>
+          <button class="tabbutton" type="button" data-tab="leaseBreakdownPanel">Single Car Lease Breakdown</button>
+          <button class="tabbutton" type="button" data-tab="yearlyLeasePanel">Yearly Lease Breakdown</button>
+        </div>
+
+        <div class="tab-panel active" id="overviewPanel">
+          <h2>Decision Overview</h2>
+          <div class="kpis">
+            <div class="kpi">
+              <div class="label">Rental after-tax monthly cost per car</div>
+              <div class="value" id="rentalMonthlyAfterTax"></div>
+            </div>
+            <div class="kpi">
+              <div class="label">Lease after-tax monthly cost per car</div>
+              <div class="value" id="leaseMonthlyAfterTax"></div>
+            </div>
+            <div class="kpi">
+              <div class="label">Max acceptable lease finance payment per car/month</div>
+              <div class="value" id="maxLeasePaymentAfterTax"></div>
+            </div>
+            <div class="kpi">
+              <div class="label">After-tax lease advantage, total fleet</div>
+              <div class="value" id="fleetAdvantage"></div>
+            </div>
+          </div>
+
+          <div class="barwrap">
+            <div class="barrow">
+              <div class="barlabel"><span>Rental net after tax</span><strong id="rentalTotalAfterTaxLabel"></strong></div>
+              <div class="bar"><div class="fill" id="rentalBar"></div></div>
+            </div>
+            <div class="barrow">
+              <div class="barlabel"><span>Lease net after tax and resale</span><strong id="leaseTotalAfterTaxLabel"></strong></div>
+              <div class="bar"><div class="fill alt" id="leaseBar"></div></div>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th>Per Car</th>
+                <th>All Fleet</th>
+              </tr>
+            </thead>
+            <tbody id="summaryTable"></tbody>
+          </table>
+
+          <p class="note">Tax logic uses the rental deductible cap, straight-line depreciation, book value at resale, taxable resale profit, finance interest deductibility, and operating cost deductibility. Confirm with Adeka's tax adviser before treating this as a final tax position.</p>
+        </div>
+
+        <div class="tab-panel" id="leaseBreakdownPanel">
+          <h2>Single Car Lease Breakdown</h2>
+          <p>One-car view of the lease-to-own option using the current slider values.</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Line item</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody id="leaseBreakdownTable"></tbody>
+          </table>
+          <p class="note">Positive tax lines are shown as costs or tax payable. Tax shields are shown as benefits that reduce the lease cost.</p>
+        </div>
+
+        <div class="tab-panel" id="yearlyLeasePanel">
+          <h2>Yearly Lease Breakdown</h2>
+          <p>One-car lease-to-own cost by contract year. The final year includes the assumed resale value and resale-profit tax.</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Year</th>
+                <th>Months</th>
+                <th>Finance paid</th>
+                <th>Interest</th>
+                <th>Principal</th>
+                <th>Kasko</th>
+                <th>Trafik sigortasi</th>
+                <th>Maintenance</th>
+                <th>Tires / spare tire</th>
+                <th>MTV</th>
+                <th>Inspection</th>
+                <th>Fleet management</th>
+                <th>Replacement/admin</th>
+                <th>Other op. cost</th>
+                <th>Total operating costs</th>
+                <th>Depreciation</th>
+                <th>Tax shield</th>
+                <th>Resale</th>
+                <th>Resale tax</th>
+                <th>Net after tax</th>
+              </tr>
+            </thead>
+            <tbody id="yearlyLeaseTable"></tbody>
+          </table>
+          <p class="note">Net after tax equals finance paid plus operating costs, less resale and tax shields, plus resale tax.</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const specs = [
+      { key: "fleetSize", label: "Fleet size", value: 300, min: 50, max: 500, step: 10, format: n => `${n.toFixed(0)} cars` },
+      { key: "term", label: "Term", value: 47, min: 24, max: 60, step: 1, format: n => `${n.toFixed(0)} months` },
+      { key: "rentalMonthly", label: "Rental fee excluding VAT", value: 46500, min: 25000, max: 90000, step: 500, format: money },
+      { key: "rentalDeductibleCap", label: "Rental deductible cap excluding VAT", value: 46000, min: 0, max: 80000, step: 1000, format: money },
+      { key: "listPrice", label: "Taigo list price", value: 2364000, min: 1500000, max: 4000000, step: 10000, format: money },
+      { key: "fleetDiscount", label: "Fleet discount", value: 0.18, min: 0, max: 0.35, step: 0.01, format: pct },
+      { key: "financeRate", label: "Monthly finance rate", value: 0.0319, min: 0.015, max: 0.06, step: 0.001, format: pct },
+      { key: "resaleInflation", label: "Annual inflation for resale", value: 0.25, min: 0, max: 0.6, step: 0.01, format: pct },
+      { key: "resalePct", label: "Resale percent of future new price", value: 0.60, min: 0.35, max: 0.85, step: 0.01, format: pct },
+      { key: "opKaskoMonthly", label: "Kasko", value: 6000, min: 0, max: 25000, step: 500, format: money },
+      { key: "opTrafikMonthly", label: "Trafik sigortasi", value: 1500, min: 0, max: 10000, step: 250, format: money },
+      { key: "opMaintenanceMonthly", label: "Maintenance", value: 2500, min: 0, max: 15000, step: 500, format: money },
+      { key: "opTiresMonthly", label: "Tires / spare tire", value: 2000, min: 0, max: 15000, step: 500, format: money },
+      { key: "opMtvMonthly", label: "MTV", value: 600, min: 0, max: 5000, step: 100, format: money },
+      { key: "opInspectionMonthly", label: "Inspection", value: 50, min: 0, max: 2000, step: 50, format: money },
+      { key: "opFleetMgmtMonthly", label: "Fleet management", value: 3000, min: 0, max: 20000, step: 500, format: money },
+      { key: "opReplacementMonthly", label: "Replacement car/admin", value: 2000, min: 0, max: 20000, step: 500, format: money },
+      { key: "opOtherMonthly", label: "Other operating buffer", value: 2350, min: 0, max: 20000, step: 250, format: money },
+      { key: "opInflation", label: "Annual operating cost inflation", value: 0.25, min: 0, max: 0.6, step: 0.01, format: pct },
+      { key: "taxRate", label: "Corporate tax rate", value: 0.25, min: 0, max: 0.4, step: 0.01, format: pct },
+      { key: "deprTerm", label: "Depreciation term", value: 60, min: 24, max: 84, step: 1, format: n => `${n.toFixed(0)} months` },
+      { key: "interestDeductiblePct", label: "Finance interest deductible", value: 1, min: 0, max: 1, step: 0.05, format: pct },
+      { key: "opDeductiblePct", label: "Operating cost deductible", value: 0.70, min: 0, max: 1, step: 0.05, format: pct }
+    ];
+
+    const state = Object.fromEntries(specs.map(spec => [spec.key, spec.value]));
+    const controls = document.getElementById("controls");
+
+    specs.forEach(spec => {
+      const wrap = document.createElement("div");
+      wrap.className = "control";
+      wrap.innerHTML = `
+        <label for="${spec.key}">${spec.label}<span id="${spec.key}Value"></span></label>
+        <input id="${spec.key}" type="range" min="${spec.min}" max="${spec.max}" step="${spec.step}" value="${spec.value}">
+      `;
+      controls.appendChild(wrap);
+      const input = document.getElementById(spec.key);
+      input.addEventListener("input", event => {
+        state[spec.key] = Number(event.target.value);
+        render();
+      });
+    });
+
+    function money(value) {
+      return `${Math.round(value).toLocaleString("en-US")} TRY`;
+    }
+
+    function pct(value) {
+      return `${(value * 100).toFixed(value < 0.1 && value > 0 ? 2 : 0)}%`;
+    }
+
+    function pmt(rate, periods, presentValue) {
+      if (rate === 0) return presentValue / periods;
+      return presentValue * rate / (1 - Math.pow(1 + rate, -periods));
+    }
+
+    function inflatedSeriesTotal(monthly, annualInflation, months) {
+      const monthlyInflation = Math.pow(1 + annualInflation, 1 / 12) - 1;
+      if (monthlyInflation === 0) return monthly * months;
+      return monthly * (Math.pow(1 + monthlyInflation, months) - 1) / monthlyInflation;
+    }
+
+    const operatingComponents = [
+      { key: "opKaskoMonthly", label: "Kasko" },
+      { key: "opTrafikMonthly", label: "Trafik sigortasi" },
+      { key: "opMaintenanceMonthly", label: "Maintenance" },
+      { key: "opTiresMonthly", label: "Tires / spare tire" },
+      { key: "opMtvMonthly", label: "MTV" },
+      { key: "opInspectionMonthly", label: "Inspection" },
+      { key: "opFleetMgmtMonthly", label: "Fleet management" },
+      { key: "opReplacementMonthly", label: "Replacement car/admin" },
+      { key: "opOtherMonthly", label: "Other operating buffer" }
+    ];
+
+    function operatingMonthlyTotal() {
+      return operatingComponents.reduce((total, component) => total + state[component.key], 0);
+    }
+
+    function calculate() {
+      const purchasePrice = state.listPrice * (1 - state.fleetDiscount);
+      const financePayment = pmt(state.financeRate, state.term, purchasePrice);
+      const financeTotal = financePayment * state.term;
+      const resaleInflationFactor = Math.pow(1 + state.resaleInflation, state.term / 12);
+      const futureNewPrice = state.listPrice * resaleInflationFactor;
+      const resaleValue = futureNewPrice * state.resalePct;
+      const operatingCost = inflatedSeriesTotal(operatingMonthlyTotal(), state.opInflation, state.term);
+      const operatingCostByComponent = Object.fromEntries(
+        operatingComponents.map(component => [component.key, inflatedSeriesTotal(state[component.key], state.opInflation, state.term)])
+      );
+
+      const rentalGross = state.rentalMonthly * state.term;
+      const rentalTaxShield = Math.min(state.rentalMonthly, state.rentalDeductibleCap) * state.term * state.taxRate;
+      const rentalAfterTax = rentalGross - rentalTaxShield;
+
+      const depreciation = Math.min(purchasePrice, purchasePrice * state.term / state.deprTerm);
+      const bookValue = purchasePrice - depreciation;
+      const interest = financeTotal - purchasePrice;
+      const leaseTaxShield = (depreciation + operatingCost * state.opDeductiblePct + interest * state.interestDeductiblePct) * state.taxRate;
+      const taxableResaleProfit = Math.max(resaleValue - bookValue, 0);
+      const resaleTax = taxableResaleProfit * state.taxRate;
+      const leaseGrossBeforeResale = financeTotal + operatingCost;
+      const leaseBeforeTax = leaseGrossBeforeResale - resaleValue;
+      const leaseAfterTax = leaseGrossBeforeResale - resaleValue - leaseTaxShield + resaleTax;
+
+      const maxFinancePaymentBeforeTax = (rentalGross + resaleValue - operatingCost) / state.term;
+      const fixedAfterTaxCostWithoutFinancePayment =
+        operatingCost - resaleValue - state.taxRate * (depreciation + operatingCost * state.opDeductiblePct - purchasePrice * state.interestDeductiblePct) + resaleTax;
+      const financePaymentTaxFactor = state.term * (1 - state.taxRate * state.interestDeductiblePct);
+      const maxFinancePaymentAfterTax = (rentalAfterTax - fixedAfterTaxCostWithoutFinancePayment) / financePaymentTaxFactor;
+      const yearlyBreakdown = [];
+      const monthlyOperatingInflation = Math.pow(1 + state.opInflation, 1 / 12) - 1;
+      const monthlyDepreciation = purchasePrice / state.deprTerm;
+      let remainingPrincipal = purchasePrice;
+
+      for (let startMonth = 1; startMonth <= state.term; startMonth += 12) {
+        const endMonth = Math.min(startMonth + 11, state.term);
+        const row = {
+          year: Math.ceil(startMonth / 12),
+          months: endMonth - startMonth + 1,
+          financePaid: 0,
+          interest: 0,
+          principal: 0,
+          operatingCost: 0,
+          operatingComponents: Object.fromEntries(operatingComponents.map(component => [component.key, 0])),
+          depreciation: 0,
+          taxShield: 0,
+          resale: 0,
+          resaleTax: 0,
+          netAfterTax: 0
+        };
+
+        for (let month = startMonth; month <= endMonth; month += 1) {
+          const interestForMonth = remainingPrincipal * state.financeRate;
+          const principalForMonth = financePayment - interestForMonth;
+          const operatingFactor = Math.pow(1 + monthlyOperatingInflation, month - 1);
+          const depreciationForMonth = month <= state.deprTerm ? Math.min(monthlyDepreciation, purchasePrice - (month - 1) * monthlyDepreciation) : 0;
+
+          row.financePaid += financePayment;
+          row.interest += interestForMonth;
+          row.principal += principalForMonth;
+          operatingComponents.forEach(component => {
+            const componentCost = state[component.key] * operatingFactor;
+            row.operatingComponents[component.key] += componentCost;
+            row.operatingCost += componentCost;
+          });
+          row.depreciation += depreciationForMonth;
+          remainingPrincipal = Math.max(0, remainingPrincipal - principalForMonth);
+        }
+
+        row.taxShield = (row.depreciation + row.operatingCost * state.opDeductiblePct + row.interest * state.interestDeductiblePct) * state.taxRate;
+        if (endMonth === state.term) {
+          row.resale = resaleValue;
+          row.resaleTax = resaleTax;
+        }
+        row.netAfterTax = row.financePaid + row.operatingCost - row.resale - row.taxShield + row.resaleTax;
+        yearlyBreakdown.push(row);
+      }
+
+      return {
+        purchasePrice,
+        financePayment,
+        financeTotal,
+        futureNewPrice,
+        resaleValue,
+        operatingCost,
+        operatingCostByComponent,
+        rentalGross,
+        rentalTaxShield,
+        rentalAfterTax,
+        depreciation,
+        bookValue,
+        interest,
+        leaseTaxShield,
+        taxableResaleProfit,
+        resaleTax,
+        leaseGrossBeforeResale,
+        leaseBeforeTax,
+        leaseAfterTax,
+        maxFinancePaymentBeforeTax,
+        maxFinancePaymentAfterTax,
+        yearlyBreakdown
+      };
+    }
+
+    function row(label, perCar, allFleet) {
+      return `<tr><td>${label}</td><td>${money(perCar)}</td><td>${money(allFleet)}</td></tr>`;
+    }
+
+    function breakdownRow(label, amount) {
+      return `<tr><td>${label}</td><td>${money(amount)}</td></tr>`;
+    }
+
+    function yearlyRow(item) {
+      return `<tr>
+        <td>Year ${item.year}</td>
+        <td>${item.months}</td>
+        <td>${money(item.financePaid)}</td>
+        <td>${money(item.interest)}</td>
+        <td>${money(item.principal)}</td>
+        <td>${money(item.operatingComponents.opKaskoMonthly)}</td>
+        <td>${money(item.operatingComponents.opTrafikMonthly)}</td>
+        <td>${money(item.operatingComponents.opMaintenanceMonthly)}</td>
+        <td>${money(item.operatingComponents.opTiresMonthly)}</td>
+        <td>${money(item.operatingComponents.opMtvMonthly)}</td>
+        <td>${money(item.operatingComponents.opInspectionMonthly)}</td>
+        <td>${money(item.operatingComponents.opFleetMgmtMonthly)}</td>
+        <td>${money(item.operatingComponents.opReplacementMonthly)}</td>
+        <td>${money(item.operatingComponents.opOtherMonthly)}</td>
+        <td>${money(item.operatingCost)}</td>
+        <td>${money(item.depreciation)}</td>
+        <td>${money(item.taxShield)}</td>
+        <td>${money(item.resale)}</td>
+        <td>${money(item.resaleTax)}</td>
+        <td>${money(item.netAfterTax)}</td>
+      </tr>`;
+    }
+
+    document.querySelectorAll(".tabbutton").forEach(button => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".tabbutton").forEach(item => item.classList.remove("active"));
+        document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
+        button.classList.add("active");
+        document.getElementById(button.dataset.tab).classList.add("active");
+      });
+    });
+
+    function render() {
+      specs.forEach(spec => {
+        document.getElementById(`${spec.key}Value`).textContent = spec.format(state[spec.key]);
+      });
+
+      const c = calculate();
+      const fleet = state.fleetSize;
+      const advantage = c.rentalAfterTax - c.leaseAfterTax;
+      const decisionTitle = document.getElementById("decisionTitle");
+      const decisionText = document.getElementById("decisionText");
+      const decisionBox = document.getElementById("decisionBox");
+      const leaseWins = advantage > 0;
+
+      decisionTitle.textContent = leaseWins ? "Lease-to-own wins" : "Rental wins";
+      decisionText.textContent = leaseWins
+        ? `Lease is cheaper by ${money(advantage)} per car, or ${money(advantage * fleet)} for the fleet, after tax.`
+        : `Rental is cheaper by ${money(Math.abs(advantage))} per car, or ${money(Math.abs(advantage) * fleet)} for the fleet, after tax.`;
+      decisionBox.style.borderLeftColor = leaseWins ? "var(--good)" : "var(--bad)";
+
+      setText("rentalMonthlyAfterTax", money(c.rentalAfterTax / state.term));
+      setText("leaseMonthlyAfterTax", money(c.leaseAfterTax / state.term));
+      setText("maxLeasePaymentAfterTax", money(c.maxFinancePaymentAfterTax));
+      setText("fleetAdvantage", money(advantage * fleet));
+      document.getElementById("fleetAdvantage").className = `value ${leaseWins ? "positive" : "negative"}`;
+
+      setText("rentalTotalAfterTaxLabel", money(c.rentalAfterTax * fleet));
+      setText("leaseTotalAfterTaxLabel", money(c.leaseAfterTax * fleet));
+      const maxBar = Math.max(c.rentalAfterTax, c.leaseAfterTax);
+      document.getElementById("rentalBar").style.width = `${Math.max(4, c.rentalAfterTax / maxBar * 100)}%`;
+      document.getElementById("leaseBar").style.width = `${Math.max(4, c.leaseAfterTax / maxBar * 100)}%`;
+
+      document.getElementById("summaryTable").innerHTML = [
+        row("Rental gross cost", c.rentalGross, c.rentalGross * fleet),
+        row("Rental tax shield", c.rentalTaxShield, c.rentalTaxShield * fleet),
+        row("Rental net after tax", c.rentalAfterTax, c.rentalAfterTax * fleet),
+        row("Lease gross cash paid before resale", c.leaseGrossBeforeResale, c.leaseGrossBeforeResale * fleet),
+        row("Assumed resale value", c.resaleValue, c.resaleValue * fleet),
+        row("Lease tax shield", c.leaseTaxShield, c.leaseTaxShield * fleet),
+        row("Tax on resale profit", c.resaleTax, c.resaleTax * fleet),
+        row("Lease net after tax and resale", c.leaseAfterTax, c.leaseAfterTax * fleet),
+        row("Current finance payment", c.financePayment, c.financePayment * fleet),
+        row("Max finance payment after tax", c.maxFinancePaymentAfterTax, c.maxFinancePaymentAfterTax * fleet)
+      ].join("");
+
+      document.getElementById("leaseBreakdownTable").innerHTML = [
+        breakdownRow("List price", state.listPrice),
+        breakdownRow("Fleet discount benefit", state.listPrice - c.purchasePrice),
+        breakdownRow("Discounted purchase price", c.purchasePrice),
+        breakdownRow("Monthly finance payment", c.financePayment),
+        breakdownRow("Total finance payments over term", c.financeTotal),
+        breakdownRow("Total finance interest", c.interest),
+        breakdownRow("Operating costs over term", c.operatingCost),
+        breakdownRow(" - Kasko", c.operatingCostByComponent.opKaskoMonthly),
+        breakdownRow(" - Trafik sigortasi", c.operatingCostByComponent.opTrafikMonthly),
+        breakdownRow(" - Maintenance", c.operatingCostByComponent.opMaintenanceMonthly),
+        breakdownRow(" - Tires / spare tire", c.operatingCostByComponent.opTiresMonthly),
+        breakdownRow(" - MTV", c.operatingCostByComponent.opMtvMonthly),
+        breakdownRow(" - Inspection", c.operatingCostByComponent.opInspectionMonthly),
+        breakdownRow(" - Fleet management", c.operatingCostByComponent.opFleetMgmtMonthly),
+        breakdownRow(" - Replacement car/admin", c.operatingCostByComponent.opReplacementMonthly),
+        breakdownRow(" - Other operating buffer", c.operatingCostByComponent.opOtherMonthly),
+        breakdownRow("Lease gross cash paid before resale", c.leaseGrossBeforeResale),
+        breakdownRow("Future new-car value anchor", c.futureNewPrice),
+        breakdownRow("Assumed resale value", c.resaleValue),
+        breakdownRow("Lease net cost after resale, before tax", c.leaseBeforeTax),
+        breakdownRow("Depreciation expense", c.depreciation),
+        breakdownRow("Book value at resale", c.bookValue),
+        breakdownRow("Taxable resale profit", c.taxableResaleProfit),
+        breakdownRow("Tax on resale profit", c.resaleTax),
+        breakdownRow("Lease tax shield", c.leaseTaxShield),
+        breakdownRow("Lease net cost after tax and resale", c.leaseAfterTax),
+        breakdownRow("Effective after-tax monthly lease cost", c.leaseAfterTax / state.term),
+        breakdownRow("Max acceptable lease finance payment after tax", c.maxFinancePaymentAfterTax)
+      ].join("");
+
+      document.getElementById("yearlyLeaseTable").innerHTML = c.yearlyBreakdown.map(yearlyRow).join("");
+    }
+
+    function setText(id, text) {
+      document.getElementById(id).textContent = text;
+    }
+
+    render();
+  </script>
+</body>
+</html>
