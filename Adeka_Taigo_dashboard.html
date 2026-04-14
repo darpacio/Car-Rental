@@ -151,6 +151,18 @@
       white-space: nowrap;
     }
 
+    .control.calculated {
+      background: var(--panel);
+    }
+
+    .calculated-value {
+      display: block;
+      margin-top: 2px;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--accent);
+    }
+
     .vehicle-picker {
       display: grid;
       gap: 6px;
@@ -510,6 +522,16 @@
         state[spec.key] = Number(event.target.value);
         render();
       });
+
+      if (spec.key === "fleetDiscount") {
+        const discountedPrice = document.createElement("div");
+        discountedPrice.className = "control calculated";
+        discountedPrice.innerHTML = `
+          <label>Discounted price</label>
+          <strong class="calculated-value" id="discountedPriceValue"></strong>
+        `;
+        controls.appendChild(discountedPrice);
+      }
     });
 
     vehicleSelect.addEventListener("change", event => {
@@ -770,6 +792,8 @@
       });
 
       const c = calculate();
+      setText("discountedPriceValue", money(c.purchasePrice));
+
       const fleet = state.fleetSize;
       const advantage = c.rentalAfterTax - c.leaseAfterTax;
       const decisionTitle = document.getElementById("decisionTitle");
