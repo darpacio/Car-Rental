@@ -392,6 +392,7 @@
       <section class="section">
         <div class="tabs" aria-label="Dashboard tabs">
           <button class="tabbutton active" type="button" data-tab="overviewPanel">Decision Overview</button>
+          <button class="tabbutton" type="button" data-tab="comparisonPanel">Car Comparison</button>
           <button class="tabbutton" type="button" data-tab="leaseBreakdownPanel">Single Car Lease Breakdown</button>
           <button class="tabbutton" type="button" data-tab="yearlyLeasePanel">Yearly Lease Breakdown</button>
         </div>
@@ -440,6 +441,28 @@
           </table>
 
           <p class="note">Tax logic uses the rental deductible cap, straight-line depreciation, book value at resale, taxable resale profit, finance interest deductibility, and operating cost deductibility. Confirm with Adeka's tax adviser before treating this as a final tax position.</p>
+        </div>
+
+        <div class="tab-panel" id="comparisonPanel">
+          <h2>Car Comparison</h2>
+          <p>Saved car drafts side by side. Add a car name, set the sliders, and calculate car data to include it here.</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Car</th>
+                <th>List price</th>
+                <th>Discounted price</th>
+                <th>Finance payment/month</th>
+                <th>Lease after-tax/month</th>
+                <th>Rental after-tax/month</th>
+                <th>Max finance payment/month</th>
+                <th>Lease advantage, fleet</th>
+                <th>Decision</th>
+              </tr>
+            </thead>
+            <tbody id="comparisonTable"></tbody>
+          </table>
+          <p class="note" id="comparisonNote"></p>
         </div>
 
         <div class="tab-panel" id="leaseBreakdownPanel">
@@ -608,7 +631,9 @@
 
     exportDraftButton.addEventListener("click", () => {
       downloadDraft();
-      carMessage.textContent = "Draft saved as a JSON file.";
+      carMessage.textContent = saveDraft()
+        ? "Draft saved as a JSON file and in this browser."
+        : "Draft saved as a JSON file. Browser save is unavailable.";
     });
 
     importDraftButton.addEventListener("click", () => {
@@ -949,6 +974,43 @@
       </tr>`;
     }
 
+    function comparisonRow(car) {
+      const values = normalizeValues(car.values);
+      const c = calculateScenario(values);
+      const fleet = values.fleetSize;
+      const advantage = c.rentalAfterTax - c.leaseAfterTax;
+      const leaseWins = advantage > 0;
+
+      return `<tr>
+        <td>${escapeHtml(car.name)}</td>
+        <td>${money(values.listPrice)}</td>
+        <td>${money(c.purchasePrice)}</td>
+        <td>${money(c.financePayment)}</td>
+        <td>${money(c.leaseAfterTax / values.term)}</td>
+        <td>${money(c.rentalAfterTax / values.term)}</td>
+        <td>${money(c.maxFinancePaymentAfterTax)}</td>
+        <td class="${leaseWins ? "positive" : "negative"}">${money(advantage * fleet)}</td>
+        <td>${leaseWins ? "Lease-to-own" : "Rental"}</td>
+      </tr>`;
+    }
+
+    function calculateScenario(values) {
+      const currentState = snapshotState();
+      Object.assign(state, values);
+      const result = calculate();
+      Object.assign(state, currentState);
+      return result;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
     document.querySelectorAll(".tabbutton").forEach(button => {
       button.addEventListener("click", () => {
         document.querySelectorAll(".tabbutton").forEach(item => item.classList.remove("active"));
@@ -1041,6 +1103,13 @@
       ].join("");
 
       document.getElementById("yearlyLeaseTable").innerHTML = c.yearlyBreakdown.map(yearlyRow).join("");
+      document.getElementById("comparisonTable").innerHTML = Object.values(carOptions).map(comparisonRow).join("");
+      setText(
+        "comparisonNote",
+        Object.keys(carOptions).length > 1
+          ? "Comparison uses the saved car data from the dropdown."
+          : "Only Taigo is saved right now. Add another car to compare alternatives."
+      );
     }
 
     function setText(id, text) {
