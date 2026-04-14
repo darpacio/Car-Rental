@@ -203,6 +203,26 @@
       margin-top: 0;
     }
 
+    .draft-actions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .draft-actions button {
+      padding: 8px 10px;
+    }
+
+    .draft-actions .secondary {
+      background: var(--white);
+      color: var(--accent);
+    }
+
+    .file-input {
+      display: none;
+    }
+
     input[type="range"] {
       width: 100%;
       accent-color: var(--accent);
@@ -339,7 +359,7 @@
     <div class="topbar">
       <div>
         <h1 id="dashboardTitle">Adeka Taigo Fleet Dashboard</h1>
-        <p>Move the assumptions and use the after-tax decision point as the quote threshold for lease-to-own. Rental fee is entered excluding VAT.</p>
+        <p>Move the inputs and use the after-tax decision point as the quote threshold for lease-to-own. Rental fee is entered excluding VAT.</p>
         <div class="vehicle-picker">
           <label for="vehicleSelect">Saved car</label>
           <select id="vehicleSelect" aria-label="Saved car">
@@ -348,6 +368,12 @@
           <label for="carNameInput">New car name</label>
           <input id="carNameInput" type="text" placeholder="Enter a car name">
           <button id="calculateCarButton" type="button">Calculate car data</button>
+          <div class="draft-actions" aria-label="Draft actions">
+            <button class="secondary" id="resetDraftButton" type="button">Reset draft</button>
+            <button id="exportDraftButton" type="button">Save draft</button>
+            <button class="secondary" id="importDraftButton" type="button">Import saved draft</button>
+          </div>
+          <input class="file-input" id="importDraftInput" type="file" accept="application/json,.json">
           <p class="note" id="carMessage">Taigo uses the figures from this project. Add a name and adjust the sliders to create another car.</p>
         </div>
       </div>
@@ -468,6 +494,9 @@
   </main>
 
   <script>
+    const draftStorageKey = "adekaFleetDashboardDraftV1";
+    const draftVersion = 1;
+
     const carOptions = {
       taigo: {
         name: "Taigo",
@@ -507,6 +536,10 @@
     const carNameInput = document.getElementById("carNameInput");
     const calculateCarButton = document.getElementById("calculateCarButton");
     const carMessage = document.getElementById("carMessage");
+    const resetDraftButton = document.getElementById("resetDraftButton");
+    const exportDraftButton = document.getElementById("exportDraftButton");
+    const importDraftButton = document.getElementById("importDraftButton");
+    const importDraftInput = document.getElementById("importDraftInput");
     carOptions.taigo.values = snapshotState();
 
     specs.forEach(spec => {
@@ -563,6 +596,45 @@
       render();
     });
 
+    resetDraftButton.addEventListener("click", () => {
+      try {
+        localStorage.removeItem(draftStorageKey);
+      } catch (error) {
+        // Ignore storage cleanup failure; reset can still restore the visible defaults.
+      }
+      resetToDefaultDraft();
+      carMessage.textContent = "Draft reset to Taigo defaults.";
+    });
+
+    exportDraftButton.addEventListener("click", () => {
+      downloadDraft();
+      carMessage.textContent = "Draft saved as a JSON file.";
+    });
+
+    importDraftButton.addEventListener("click", () => {
+      importDraftInput.click();
+    });
+
+    importDraftInput.addEventListener("change", event => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.addEventListener("load", () => {
+        try {
+          restoreDraft(JSON.parse(reader.result), true);
+          carMessage.textContent = saveDraft()
+            ? "Draft imported and saved in this browser."
+            : "Draft imported, but it could not be saved in this browser.";
+        } catch (error) {
+          carMessage.textContent = "Draft import failed. Choose a valid dashboard JSON file.";
+        } finally {
+          importDraftInput.value = "";
+        }
+      });
+      reader.readAsText(file);
+    });
+
     function snapshotState() {
       return Object.fromEntries(specs.map(spec => [spec.key, state[spec.key]]));
     }
@@ -596,6 +668,111 @@
         vehicleSelect.appendChild(option);
       });
       vehicleSelect.value = selectedKey;
+    }
+
+    function createDraftPayload() {
+      return {
+        version: draftVersion,
+        savedAt: new Date().toISOString(),
+        selectedCarKey: vehicleSelect.value,
+        currentState: snapshotState(),
+        carNameDraft: carNameInput.value.trim(),
+        carOptions
+      };
+    }
+
+    function saveDraft() {
+      try {
+        localStorage.setItem(draftStorageKey, JSON.stringify(createDraftPayload()));
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function resetToDefaultDraft() {
+      Object.keys(carOptions).forEach(key => {
+        if (key !== "taigo") delete carOptions[key];
+      });
+      carOptions.taigo.values = Object.fromEntries(specs.map(spec => [spec.key, spec.value]));
+      applyCarValues(carOptions.taigo.values);
+      carNameInput.value = "";
+      renderCarOptions("taigo");
+      render();
+    }
+
+    function restoreSavedDraft() {
+      let savedDraft = null;
+      try {
+        savedDraft = localStorage.getItem(draftStorageKey);
+      } catch (error) {
+        return false;
+      }
+      if (!savedDraft) return false;
+
+      try {
+        restoreDraft(JSON.parse(savedDraft), false);
+        carMessage.textContent = "Saved draft restored from this browser.";
+        return true;
+      } catch (error) {
+        try {
+          localStorage.removeItem(draftStorageKey);
+        } catch (storageError) {
+          // Ignore cleanup failure; the dashboard can still run with defaults.
+        }
+        carMessage.textContent = "Saved draft could not be restored. Taigo defaults loaded.";
+        return false;
+      }
+    }
+
+    function restoreDraft(payload) {
+      if (!payload || payload.version !== draftVersion || !payload.carOptions || !payload.carOptions.taigo) {
+        throw new Error("Invalid draft");
+      }
+
+      const restoredCars = {};
+      Object.entries(payload.carOptions).forEach(([key, car]) => {
+        if (!/^[a-z0-9-]+$/.test(key)) return;
+        if (!car || typeof car.name !== "string" || !car.values) return;
+        restoredCars[key] = {
+          name: car.name,
+          values: normalizeValues(car.values)
+        };
+      });
+
+      if (!restoredCars.taigo) throw new Error("Missing Taigo draft");
+
+      Object.keys(carOptions).forEach(key => delete carOptions[key]);
+      Object.assign(carOptions, restoredCars);
+
+      const selectedKey = carOptions[payload.selectedCarKey] ? payload.selectedCarKey : "taigo";
+      renderCarOptions(selectedKey);
+      applyCarValues(payload.currentState ? normalizeValues(payload.currentState) : carOptions[selectedKey].values);
+      carNameInput.value = typeof payload.carNameDraft === "string"
+        ? payload.carNameDraft
+        : (carOptions[selectedKey].name === "Taigo" ? "" : carOptions[selectedKey].name);
+      render();
+    }
+
+    function normalizeValues(values) {
+      const normalized = {};
+      specs.forEach(spec => {
+        const value = Number(values[spec.key]);
+        normalized[spec.key] = Number.isFinite(value) ? value : spec.value;
+      });
+      return normalized;
+    }
+
+    function downloadDraft() {
+      const blob = new Blob([JSON.stringify(createDraftPayload(), null, 2)], { type: "application/json" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.href = url;
+      link.download = `adeka-fleet-draft-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
     }
 
     function money(value) {
@@ -870,7 +1047,9 @@
       document.getElementById(id).textContent = text;
     }
 
-    render();
+    if (!restoreSavedDraft()) {
+      render();
+    }
   </script>
 </body>
 </html>
